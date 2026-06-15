@@ -9,7 +9,8 @@ def imu():
  
     print(
         time.strftime("%H:%M:%S"),
-        data
+        data,
+        flush=True
     )
  
     return "OK", 200
