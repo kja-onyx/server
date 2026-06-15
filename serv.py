@@ -1,7 +1,8 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
 import csv
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
@@ -30,26 +31,36 @@ def home():
 
 @app.route("/imu", methods=["POST"])
 def imu():
-    data = request.json
+    try:
+        data = request.get_json()
 
-    timestamp = datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S.%f"
-    )[:-3]
+        timestamp = datetime.now(
+            ZoneInfo("Asia/Kolkata")
+        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
-    with open(CSV_FILE, "a", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            timestamp,
-            data.get("esp_ms"),
-            data.get("ax"),
-            data.get("ay"),
-            data.get("az"),
-            data.get("gx"),
-            data.get("gy"),
-            data.get("gz")
-        ])
+        with open(CSV_FILE, "a", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                timestamp,
+                data.get("esp_ms"),
+                data.get("ax"),
+                data.get("ay"),
+                data.get("az"),
+                data.get("gx"),
+                data.get("gy"),
+                data.get("gz")
+            ])
 
-    return {"status": "ok"}, 200
+        return jsonify({
+            "status": "success",
+            "timestamp": timestamp
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 @app.route("/csv")
@@ -61,5 +72,16 @@ def download_csv():
     )
 
 
+@app.route("/count")
+def count_rows():
+    with open(CSV_FILE, "r") as f:
+        rows = sum(1 for _ in f) - 1
+
+    return jsonify({
+        "records": rows
+    })
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
