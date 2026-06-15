@@ -1,41 +1,72 @@
-from flask import Flask, request, jsonify
-import time
- 
-app = Flask(__name__)
- 
-all_data = []
- 
-@app.route("/", methods=["GET"])
+from flask import Flask, request, send_file
+
+import csv
+
+import os
+
+from datetime import datetime
+app = Flask(name)
+CSV_FILE = "imu_data.csv"
+Create CSV file with header if it doesn't exist
+if not os.path.exists(CSV_FILE):
+
+with open(CSV_FILE, "w", newline="") as f:
+
+writer = csv.writer(f)
+
+writer.writerow([
+
+"timestamp",
+
+"esp_ms",
+
+"ax",
+
+"ay",
+
+"az",
+
+"gx",
+
+"gy",
+
+"gz"
+
+])
+@app.route("/")
+
 def home():
-    return "ESP32 IMU Server Running"
- 
+
+return "ESP32 IMU Server Running"
 @app.route("/imu", methods=["POST"])
+
 def imu():
+data = request.json
+timestamp = datetime.now().strftime(
+    "%Y-%m-%d %H:%M:%S.%f"
+)[:-3]
+with open(CSV_FILE, "a", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow([
+        timestamp,
+        data.get("esp_ms"),
+        data.get("ax"),
+        data.get("ay"),
+        data.get("az"),
+        data.get("gx"),
+        data.get("gy"),
+        data.get("gz")
+    ])
+return {"status": "ok"}, 200
+@app.route("/csv")
+
+def download_csv():
+return send_file(
+    CSV_FILE,
+    as_attachment=True,
+    download_name="imu_data.csv"
+)
+if name == "main":
+
+app.run(host="0.0.0.0", port=10000)
  
-    data = request.json
- 
-    all_data.append(data)
- 
-    # Keep last 5000 samples
-    if len(all_data) > 5000:
-        all_data.pop(0)
- 
-    print(time.strftime("%H:%M:%S"), data)
- 
-    return {"status": "ok"}, 200
- 
-@app.route("/latest", methods=["GET"])
-def latest():
- 
-    if len(all_data) == 0:
-        return jsonify({})
- 
-    return jsonify(all_data[-1])
- 
-@app.route("/all", methods=["GET"])
-def all_samples():
- 
-    return jsonify(all_data)
- 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
